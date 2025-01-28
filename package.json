@@ -2,7 +2,6 @@
   "name": "vercel-redirect",
   "version": "1.0.0",
   "description": "A simple serverless redirect using SQLite",
-  "main": "api/redirect.js",
   "dependencies": {
     "sqlite3": "^5.1.6"
   }

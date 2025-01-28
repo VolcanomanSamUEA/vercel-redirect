@@ -9,17 +9,23 @@ const db = new sqlite3.Database('./redirects.db', (err) => {
     }
 });
 
-// Create the redirects table if it doesn't exist
+// Set up the database on startup
 db.serialize(() => {
+    console.log('Setting up the database...');
     db.run(`
         CREATE TABLE IF NOT EXISTS redirects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             url TEXT NOT NULL,
             count INTEGER DEFAULT 0
         )
-    `);
+    `, (err) => {
+        if (err) {
+            console.error('Failed to create table:', err.message);
+        } else {
+            console.log('Table created or already exists.');
+        }
+    });
 
-    // List of URLs for redirection
     const urls = [
         "https://form.jotform.com/smitchinson/cove-b1",
         "https://form.jotform.com/smitchinson/cove-b2",
@@ -27,14 +33,20 @@ db.serialize(() => {
         "https://form.jotform.com/smitchinson/cove-b4"
     ];
 
-    // Populate the database with URLs if not already populated
     urls.forEach((url) => {
-        db.run(`INSERT OR IGNORE INTO redirects (url, count) VALUES (?, 0)`, [url]);
+        db.run(`INSERT OR IGNORE INTO redirects (url, count) VALUES (?, 0)`, [url], (err) => {
+            if (err) {
+                console.error('Failed to insert URL:', err.message);
+            } else {
+                console.log(`Inserted URL: ${url}`);
+            }
+        });
     });
 });
 
 // Handle API requests
 module.exports = (req, res) => {
+    console.log('Handling API request...');
     db.serialize(() => {
         db.get(
             `SELECT id, url, count FROM redirects ORDER BY count ASC LIMIT 1`,
@@ -46,7 +58,7 @@ module.exports = (req, res) => {
                     return;
                 }
 
-                // Increment the redirect count for the selected URL
+                console.log(`Redirecting to: ${row.url}`);
                 db.run(`UPDATE redirects SET count = count + 1 WHERE id = ?`, [row.id], (updateErr) => {
                     if (updateErr) {
                         console.error('Failed to update count:', updateErr.message);
@@ -55,7 +67,6 @@ module.exports = (req, res) => {
                         return;
                     }
 
-                    // Redirect the user to the selected URL
                     res.writeHead(302, { Location: row.url });
                     res.end();
                 });
